@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: fct_sdg_progress
+    description: Core fact table of all SDG indicators by country and year
+    columns:
+      - name: country_code
+        tests: [not_null]
+      - name: indicator_code
+        tests: [not_null]
+      - name: year
+        tests: [not_null]
+      - name: value
+        tests: [not_null]
+
+  - name: fct_sdg_target_achievement
+    description: 2030 target achievement status per country per indicator
+
+  - name: dim_countries
+    description: Country dimension with region, income group and SDG scores
+    columns:
+      - name: country_code
+        tests: [not_null, unique]
+
+  - name: dim_sdg_goals
+    description: SDG goal dimension with pillar grouping
+    columns:
+      - name: goal
+        tests: [not_null, unique]
+
+  - name: mart_africa_2030_tracker
+    description: Main Africa SDG dashboard table
+
+  - name: mart_sdg_goal_summary
+    description: Summary of SDG progress per goal across Africa
+
+  - name: mart_kenya_vs_peers
+    description: Kenya vs East African peers comparison

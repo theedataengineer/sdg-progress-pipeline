@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: stg_wb_sdg_indicators
+    description: >
+      Cleaned World Bank SDG indicators. One row per country,
+      indicator and year. Null values and invalid years filtered out.
+    columns:
+      - name: indicator_code
+        description: World Bank indicator code e.g. SI.POV.DDAY
+        tests: [not_null]
+      - name: country_code
+        description: ISO3 country code e.g. KEN
+        tests: [not_null]
+      - name: year
+        description: Year of measurement
+        tests: [not_null]
+      - name: value
+        description: Indicator value rounded to 4 decimal places
+        tests: [not_null]
+      - name: is_african_country
+        description: True if country is one of 54 African nations
+        tests: [not_null]
+
+  - name: stg_kafka_sdg_stream
+    description: >
+      Cleaned streaming SDG records from Kafka consumer.
+      Includes pipeline latency calculation.
+    columns:
+      - name: record_id
+        description: Deterministic MD5 hash of country+indicator+year
+        tests: [not_null, unique]
+
+  - name: stg_sdg_goal_metadata
+    description: SDG goal reference data with pillar grouping
+    columns:
+      - name: goal
+        tests: [not_null, unique]
+
+  - name: stg_wb_country_metadata
+    description: Country metadata with income tier ranking
+    columns:
+      - name: country_code
+        tests: [not_null, unique]

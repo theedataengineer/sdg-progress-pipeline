@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: int_sdg_indicators_combined
+    description: >
+      Merged World Bank batch and Kafka streaming indicators.
+      Deduplicated on country + indicator + year.
+      Batch data takes priority over streaming on conflict.
+
+  - name: int_year_over_year_progress
+    description: >
+      Annual change calculations for each indicator per country.
+      Includes absolute change, percentage change, and
+      annualised rate accounting for data gaps.
+
+  - name: int_sdg_target_gaps
+    description: >
+      Distance from current values to 2030 SDG targets.
+      Includes on-track status classification.
+
+  - name: int_africa_sdg_scores
+    description: >
+      Composite SDG progress scores (0-100) per country per goal.
+      Aggregated from individual indicator progress scores.
