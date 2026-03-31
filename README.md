@@ -119,7 +119,7 @@ GitHub Actions CI/CD - runs full dbt pipeline on every push (63 seconds)
 | Apache Kafka | 7.5.0 | Real-time streaming of SDG indicator updates |
 | Apache Zookeeper | 7.5.0 | Kafka cluster coordinator |
 | MinIO | latest | Local S3-compatible data lake |
-| Apache Airflow | 2.8.0 | Pipeline orchestration — 4 DAGs |
+| Apache Airflow | 2.8.0 | Pipeline orchestration - 4 DAGs |
 | PostgreSQL | 15 | Data warehouse |
 | dbt Core | 1.11.7 | 3-layer data transformation |
 | Apache Superset | 3.1.0 | SDG progress dashboard |
