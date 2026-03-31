@@ -1,0 +1,200 @@
+name: SDG Pipeline CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dbt-ci:
+    name: dbt Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: sdg_warehouse
+          POSTGRES_USER: sdg_user
+          POSTGRES_PASSWORD: sdg_password_2024
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dbt
+        run: pip install dbt-core dbt-postgres
+
+      - name: Create dbt profiles
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'PROFILE'
+          sdg_pipeline:
+            target: ci
+            outputs:
+              ci:
+                type: postgres
+                host: localhost
+                port: 5432
+                dbname: sdg_warehouse
+                user: sdg_user
+                password: sdg_password_2024
+                schema: analytics
+                threads: 4
+          PROFILE
+
+      - name: Seed CI test data into PostgreSQL
+        run: |
+          PGPASSWORD=sdg_password_2024 psql \
+            -h localhost -U sdg_user -d sdg_warehouse << 'SQL'
+
+          CREATE TABLE IF NOT EXISTS raw_wb_sdg_indicators (
+            id SERIAL PRIMARY KEY,
+            indicator_code VARCHAR(50) NOT NULL,
+            indicator_name TEXT,
+            goal INTEGER,
+            country_code VARCHAR(3) NOT NULL,
+            country_name VARCHAR(100),
+            year INTEGER NOT NULL,
+            value NUMERIC(20,6),
+            unit VARCHAR(100),
+            obs_status VARCHAR(50),
+            source VARCHAR(100),
+            extracted_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            CONSTRAINT uq_wb_indicator UNIQUE (country_code, indicator_code, year)
+          );
+
+          CREATE TABLE IF NOT EXISTS raw_kafka_sdg_stream (
+            id SERIAL PRIMARY KEY,
+            record_id VARCHAR(64) NOT NULL UNIQUE,
+            goal INTEGER,
+            indicator_code VARCHAR(50),
+            indicator_name TEXT,
+            country_code VARCHAR(3),
+            country_name VARCHAR(100),
+            year INTEGER,
+            value NUMERIC(20,6),
+            unit VARCHAR(100),
+            obs_status VARCHAR(50),
+            source VARCHAR(100),
+            extracted_at TIMESTAMPTZ,
+            published_at TIMESTAMPTZ,
+            batch_file TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          CREATE TABLE IF NOT EXISTS raw_sdg_goal_metadata (
+            id SERIAL PRIMARY KEY,
+            goal INTEGER NOT NULL UNIQUE,
+            goal_title VARCHAR(200),
+            goal_description TEXT,
+            target_year INTEGER DEFAULT 2030,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          CREATE TABLE IF NOT EXISTS raw_wb_country_metadata (
+            id SERIAL PRIMARY KEY,
+            country_code VARCHAR(3) NOT NULL UNIQUE,
+            country_name VARCHAR(100),
+            region VARCHAR(100),
+            income_group VARCHAR(100),
+            continent VARCHAR(50),
+            is_african BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          );
+
+          INSERT INTO raw_sdg_goal_metadata (goal, goal_title, goal_description)
+          VALUES
+            (1,'No Poverty','End poverty in all its forms'),
+            (3,'Good Health','Ensure healthy lives for all'),
+            (4,'Quality Education','Ensure inclusive quality education'),
+            (5,'Gender Equality','Achieve gender equality'),
+            (7,'Clean Energy','Ensure access to clean energy'),
+            (8,'Decent Work','Promote economic growth'),
+            (10,'Reduced Inequalities','Reduce inequality')
+          ON CONFLICT (goal) DO NOTHING;
+
+          INSERT INTO raw_wb_country_metadata
+            (country_code, country_name, region, income_group, continent, is_african)
+          VALUES
+            ('KEN','Kenya','Sub-Saharan Africa','Lower middle income','Africa',true),
+            ('NGA','Nigeria','Sub-Saharan Africa','Lower middle income','Africa',true),
+            ('RWA','Rwanda','Sub-Saharan Africa','Low income','Africa',true),
+            ('ETH','Ethiopia','Sub-Saharan Africa','Low income','Africa',true),
+            ('ZAF','South Africa','Sub-Saharan Africa','Upper middle income','Africa',true)
+          ON CONFLICT (country_code) DO NOTHING;
+
+          INSERT INTO raw_wb_sdg_indicators
+            (indicator_code, indicator_name, goal, country_code,
+             country_name, year, value, source)
+          VALUES
+            ('SP.DYN.LE00.IN','Life expectancy',3,'KEN','Kenya',2015,62.3,'World Bank'),
+            ('SP.DYN.LE00.IN','Life expectancy',3,'KEN','Kenya',2022,63.5,'World Bank'),
+            ('SP.DYN.LE00.IN','Life expectancy',3,'NGA','Nigeria',2015,52.1,'World Bank'),
+            ('SP.DYN.LE00.IN','Life expectancy',3,'NGA','Nigeria',2022,53.4,'World Bank'),
+            ('SG.GEN.PARL.ZS','Women in parliament',5,'RWA','Rwanda',2022,61.3,'World Bank'),
+            ('SG.GEN.PARL.ZS','Women in parliament',5,'KEN','Kenya',2022,22.4,'World Bank'),
+            ('EG.ELC.ACCS.ZS','Access to electricity',7,'KEN','Kenya',2015,36.1,'World Bank'),
+            ('EG.ELC.ACCS.ZS','Access to electricity',7,'KEN','Kenya',2022,75.0,'World Bank'),
+            ('NY.GDP.MKTP.KD.ZG','GDP growth',8,'KEN','Kenya',2022,5.4,'World Bank'),
+            ('NY.GDP.MKTP.KD.ZG','GDP growth',8,'ETH','Ethiopia',2022,7.2,'World Bank')
+          ON CONFLICT (country_code, indicator_code, year) DO NOTHING;
+
+          INSERT INTO raw_kafka_sdg_stream
+            (record_id, goal, indicator_code, indicator_name,
+             country_code, country_name, year, value, source)
+          VALUES
+            ('abc123',1,'SI.POV.DDAY','Poverty headcount','KEN','Kenya',2022,46.9,'World Bank'),
+            ('def456',3,'SH.DYN.MORT','Child mortality','ZAF','South Africa',2022,31.2,'World Bank')
+          ON CONFLICT (record_id) DO NOTHING;
+
+          SQL
+
+      - name: dbt debug
+        working-directory: dbt_project
+        run: dbt debug
+
+      - name: dbt deps
+        working-directory: dbt_project
+        run: dbt deps
+
+      - name: dbt run — staging
+        working-directory: dbt_project
+        run: dbt run --select staging
+
+      - name: dbt run — intermediate
+        working-directory: dbt_project
+        run: dbt run --select intermediate
+
+      - name: dbt run — marts
+        working-directory: dbt_project
+        run: dbt run --select marts
+
+      - name: dbt test
+        working-directory: dbt_project
+        run: dbt test
+
+      - name: dbt docs generate
+        working-directory: dbt_project
+        run: dbt docs generate
+
+      - name: Upload dbt docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: dbt_project/target/
+          retention-days: 7
