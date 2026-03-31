@@ -1,4 +1,4 @@
-# SDG Progress Tracker — Hybrid Data Pipeline
+# SDG Progress Tracker - Hybrid Data Pipeline
 
 ![CI](https://github.com/theedataengineer/sdg-progress-pipeline/actions/workflows/dbt_ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.13-blue)
@@ -21,8 +21,7 @@ all orchestrated by Airflow and validated by automated CI/CD on every push.
 ## The Problem This Solves
 
 The United Nations tracks 17 Sustainable Development Goals across 193 countries.
-SDG data is published continuously by organisations like the World Bank —
-updated at different frequencies, arriving in inconsistent formats, spread across
+SDG data is published continuously by organisations like the World Bank, updated at different frequencies, arriving in inconsistent formats, spread across
 multiple sources. Development organisations, governments, and researchers need
 reliable, automated pipelines that ingest the latest SDG data, validate its
 quality, transform it into structured models, and make it available for
@@ -67,7 +66,7 @@ World Bank Open Data API
           │
           ▼
 ┌─────────────────────────────────────┐
-│   dbt Core — 3-Layer Transformation │
+│   dbt Core - 3-Layer Transformation │
 │                                     │
 │   Staging (4 views)                 │
 │   └── clean, standardise, cast      │
@@ -86,29 +85,29 @@ World Bank Open Data API
 │   Real UN data      │  Live from mart tables
 └─────────────────────┘
 
-GitHub Actions CI/CD — runs full dbt pipeline on every push (63 seconds)
+GitHub Actions CI/CD - runs full dbt pipeline on every push (63 seconds)
 ```
 
 ---
 
 ## Screenshots
 
-### Full Stack Running — 8 Services, One Command
+### Full Stack Running - 8 Services, One Command
 ![Docker Stack](screenshots/01_docker_stack_running.png)
 
-### Kafka Streaming Layer — 5 Topics, Real SDG Messages
+### Kafka Streaming Layer - 5 Topics, Real SDG Messages
 ![Kafka Topics](screenshots/03_kafka_topics.png)
 
-### MinIO Data Lake — Partitioned JSON Files
+### MinIO Data Lake - Partitioned JSON Files
 ![MinIO](screenshots/04_minio_data_lake.png)
 
-### SDG Africa 2030 Tracker — Live Dashboard
+### SDG Africa 2030 Tracker - Live Dashboard
 ![Superset Dashboard](screenshots/05_superset_dashboard.png)
 
-### GitHub Actions CI/CD — Passing in 63 Seconds
+### GitHub Actions CI/CD - Passing in 63 Seconds
 ![GitHub Actions](screenshots/06_github_actions_ci.png)
 
-### dbt Tests — 28/28 Passing on 26,192 Records
+### dbt Tests - 28/28 Passing on 26,192 Records
 ![dbt Tests](screenshots/07_dbt_tests_passing.png)
 
 ---
@@ -124,7 +123,7 @@ GitHub Actions CI/CD — runs full dbt pipeline on every push (63 seconds)
 | PostgreSQL | 15 | Data warehouse |
 | dbt Core | 1.11.7 | 3-layer data transformation |
 | Apache Superset | 3.1.0 | SDG progress dashboard |
-| GitHub Actions | — | CI/CD — dbt tests on every push |
+| GitHub Actions | - | CI/CD - dbt tests on every push |
 | Docker Compose | v2 | Full local stack in one command |
 | Python | 3.13 | Extraction, producer, consumer scripts |
 
@@ -159,7 +158,7 @@ Real answers from real UN data:
 | East Africa energy access leader | Kenya (score 59.2) |
 | Countries on track for 2030 | 51 country-goal combinations confirmed |
 | COVID impact visible | Kenya life expectancy dropped 62.9→61.2 (2019→2021) |
-| Recovery confirmed | Kenya life expectancy 63.5 in 2022 — highest ever |
+| Recovery confirmed | Kenya life expectancy 63.5 in 2022 - highest ever |
 
 ---
 
@@ -309,7 +308,7 @@ sdg-progress-pipeline/
 │
 ├── docker-compose.yml            # entire 8-service stack
 ├── requirements.txt              # Python dependencies
-├── .env                          # secrets — never committed
+├── .env                          # secrets - never committed
 ├── .gitignore
 └── README.md
 ```
@@ -326,7 +325,7 @@ sdg-progress-pipeline/
 | sdg-world-bank-raw | 3 | World Bank source stream |
 | sdg-africa-indicators | 3 | Africa-filtered records only |
 | sdg-validated-records | 3 | Records passing schema validation |
-| sdg-failed-records | 1 | Dead letter queue — failed records |
+| sdg-failed-records | 1 | Dead letter queue - failed records |
 
 ### Message Schema
 
@@ -348,7 +347,7 @@ Every record flowing through Kafka follows this schema:
 }
 ```
 
-`record_id` is an MD5 hash of `country_code + indicator_code + year` —
+`record_id` is an MD5 hash of `country_code + indicator_code + year` -
 deterministic and collision-free. This enables the database upsert pattern:
 the same data point arriving via both streaming and batch produces
 exactly one row, not a duplicate.
@@ -358,34 +357,34 @@ exactly one row, not a duplicate.
 ## dbt Model Lineage
 ```
 Raw Layer (PostgreSQL public schema)
-├── raw_wb_sdg_indicators      26,192 rows — World Bank batch data
-├── raw_kafka_sdg_stream            5 rows — Kafka streaming data
-├── raw_sdg_goal_metadata          17 rows — all 17 SDG goals
-└── raw_wb_country_metadata        20 rows — African country metadata
+├── raw_wb_sdg_indicators      26,192 rows - World Bank batch data
+├── raw_kafka_sdg_stream            5 rows - Kafka streaming data
+├── raw_sdg_goal_metadata          17 rows - all 17 SDG goals
+└── raw_wb_country_metadata        20 rows - African country metadata
           │
           ▼
-Staging Layer (analytics_staging schema — views)
+Staging Layer (analytics_staging schema - views)
 ├── stg_wb_sdg_indicators      cleaned, typed, Africa-flagged
 ├── stg_kafka_sdg_stream       cleaned + pipeline latency calculated
 ├── stg_sdg_goal_metadata      pillar grouping added
 └── stg_wb_country_metadata    income tier ranking added
           │
           ▼
-Intermediate Layer (analytics_intermediate schema — views)
+Intermediate Layer (analytics_intermediate schema - views)
 ├── int_sdg_indicators_combined    batch + stream merged, deduplicated
 ├── int_year_over_year_progress    annual change rates, annualised trends
 ├── int_sdg_target_gaps            gap to 2030 targets, on-track status
 └── int_africa_sdg_scores          composite progress scores 0–100
           │
           ▼
-Mart Layer (analytics_marts schema — tables)
-├── fct_sdg_progress               26,193 rows — core fact table
-├── fct_sdg_target_achievement      1,583 rows — target gap analysis
-├── dim_countries                      20 rows — country dimension
-├── dim_sdg_goals                      17 rows — goal dimension
-├── mart_africa_2030_tracker          305 rows — main dashboard table
-├── mart_sdg_goal_summary               7 rows — per-goal aggregates
-└── mart_kenya_vs_peers                26 rows — East Africa comparison
+Mart Layer (analytics_marts schema - tables)
+├── fct_sdg_progress               26,193 rows - core fact table
+├── fct_sdg_target_achievement      1,583 rows - target gap analysis
+├── dim_countries                      20 rows - country dimension
+├── dim_sdg_goals                      17 rows - goal dimension
+├── mart_africa_2030_tracker          305 rows - main dashboard table
+├── mart_sdg_goal_summary               7 rows - per-goal aggregates
+└── mart_kenya_vs_peers                26 rows - East Africa comparison
 ```
 
 ---
@@ -401,7 +400,7 @@ Mart Layer (analytics_marts schema — tables)
 
 The 30-minute offset between producer and consumer ensures messages
 are available in Kafka before the consumer runs. The Monday 2 AM
-dbt run follows the Sunday 11 PM batch load — by design.
+dbt run follows the Sunday 11 PM batch load - by design.
 
 ---
 
@@ -413,11 +412,11 @@ Every push to `main` or `develop` automatically:
 2. Install dbt-core and dbt-postgres
 3. Create dbt profiles pointing at the CI database
 4. Seed minimal test data (10 indicators, 5 countries)
-5. dbt debug — confirm connection
+5. dbt debug - confirm connection
 6. dbt run --select staging
 7. dbt run --select intermediate
 8. dbt run --select marts
-9. dbt test — all 28 tests
+9. dbt test - all 28 tests
 10. dbt docs generate
 11. Upload dbt docs as downloadable artifact (7-day retention)
 
@@ -446,7 +445,7 @@ All boto3 calls, bucket names, key paths, and partition structures
 are identical between MinIO and AWS S3. This was by design.
 
 AWS Free Tier covers this project: 5 GB S3 storage,
-20,000 GET requests — zero cost.
+20,000 GET requests - zero cost.
 
 ---
 
@@ -471,7 +470,7 @@ SDG indicators with higher update frequency and more reliable uptime.
 **Consequences:**
 - All 12 dashboard analytics questions remain answerable ✅
 - Kafka streaming layer gains higher-frequency updates ✅
-- Pipeline complexity reduced — one source schema instead of two ✅
+- Pipeline complexity reduced - one source schema instead of two ✅
 - UNDESA re-integration planned when new endpoint is confirmed
 
 ### ADR-002: Country Batch Size Limited to 10
@@ -481,12 +480,12 @@ SDG indicators with higher update frequency and more reliable uptime.
 **Context:**
 Initial implementation passed all 54 African country ISO3 codes as a
 semicolon-separated string in the API URL. The World Bank API silently
-returned empty responses for requests with more than ~15 countries —
+returned empty responses for requests with more than ~15 countries -
 no error, just an empty data array.
 
 **Decision:**
 Fetch countries in batches of 10, making 6 API calls per indicator
-instead of 1. Total records extracted: 26,192 — all indicators returned data.
+instead of 1. Total records extracted: 26,192 - all indicators returned data.
 
 **Consequences:**
 - Extraction time increased from ~2 minutes to ~12 minutes ✅ acceptable
@@ -513,21 +512,21 @@ No authentication required. No rate limits for reasonable use.
 | Streaming pipelines | Kafka producer/consumer with dead letter queue and manual offset commit |
 | Batch processing | Airflow DAGs with retry logic, XCom, and dependency-aware scheduling |
 | Data lake design | MinIO with date-partitioned paths compatible with AWS Athena |
-| Data modeling | dbt 3-layer architecture — staging, intermediate, marts |
+| Data modeling | dbt 3-layer architecture - staging, intermediate, marts |
 | Data quality | 28 automated dbt tests covering not_null, unique, and source checks |
 | Deduplication | Deterministic MD5 record_id with PostgreSQL upsert on conflict |
 | Orchestration | 4 Airflow DAGs with staggered schedules and inter-DAG dependencies |
 | CI/CD | GitHub Actions running full pipeline in 63 seconds on every push |
 | Containerisation | Docker Compose with healthchecks, startup ordering, and named volumes |
 | API integration | Pagination handling, exponential backoff, batch size management |
-| Real data | 26,192 records from the World Bank Open Data API — real UN SDG data |
+| Real data | 26,192 records from the World Bank Open Data API - real UN SDG data |
 | Analytics | 12 business questions answered from real African development data |
 
 ---
 
 ## Running Tests
 ```bash
-# dbt tests — data quality across all models
+# dbt tests - data quality across all models
 cd dbt_project
 dbt test
 
