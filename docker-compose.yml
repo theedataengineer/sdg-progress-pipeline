@@ -246,7 +246,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: bash -c "superset db upgrade && superset fab create-admin --username admin --firstname SDG --lastname Admin --email admin@sdg.com --password admin && superset init && superset run -p 8088 --with-threads --reload --debugger"
+    command: bash -c "superset db upgrade && superset fab create-admin --username admin --firstname SDG --lastname Admin --email admin@sdg.com --password admin && superset init && superset run -p 8088 --with-threads --host 0.0.0.0"
     networks:
       - sdg-network
 
